@@ -1,0 +1,15 @@
+pd.reset_option('display.max_columns')
+pd.reset_option('display.max_rows')
+
+# AbNormal과 Normal 개수 세보는 코드
+file_path = 'data/train_y.csv'
+df = pd.read_csv(file_path)
+
+AbNormal_count = 0
+Normal_count = 0
+for i in range(len(df['target'])):
+    if df['target'][i] == "AbNormal":
+        AbNormal_count += 1
+    else: Normal_count +=1
+print(f"AbNormal_count = {AbNormal_count}")
+print(f"Normal_count = {Normal_count}")
