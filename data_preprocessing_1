@@ -28,3 +28,42 @@ print("\n모든 값이 동일한 열의 이름:", drop_out_list)
 
 df_merged = df_merged.drop(drop_out_list, axis=1)
 df_merged
+
+########################################################################################################
+########################################################################################################
+
+# Collect Date 데이터를 활용하여 계절별로 target 데이터에 영향을 미치는지 확인
+# 결론 : 불균형데이터여서 피어슨 상관계수가 NaN으로 나온다.
+# 따라서 확인활 수 없음. => 그래서 Collect Date - ooo 데이터 열도 지우기로 함.
+# 다음은 계절별 - target 데이터 상관관계 분석한 코드.
+# 'Season' 열 추가 함수
+
+def assign_season(date):
+    month = date[5:7]
+    if month == '12' or '01' or '02' or '03':
+        return 0
+    elif month == '04' or '05' or '06':
+        return 1
+    elif month == '07' or '08' or '09':
+        return 2
+    else:
+        return 3  # 10, 11 월인 경우 
+
+# 'Season' 열 추가
+df_merged['Season'] = df_merged['Collect Date - Dam'].apply(assign_season)
+
+# 결과 출력
+print(df_merged)
+
+# 'Season'열이 잘 추가되었는지 확인하는 코드
+pd.reset_option('display.max_columns')
+pd.reset_option('display.max_rows')
+df_merged
+
+# 타겟데이터 숫자로 변환하여 열추가
+df_merged['new_target'] = df_merged['target'].apply(lambda x: 1 if x == 'AbNormal' else 0)
+df_merged.head()
+
+# A열과 B열의 상관관계 계산
+correlation = df_merged['Season'].corr(df_merged['new_target'])
+print('Season열과 new_target열의 상관계수:', correlation)
