@@ -1,0 +1,13 @@
+from imblearn.combine import SMOTETomek
+from collections import Counter
+
+# 타겟데이터 분리
+X = train_data.drop('target', axis=1)
+y = train_data['target']
+
+# SMOTE + Tomek Links 적용
+smt = SMOTETomek(random_state=42)
+X_res, y_res = smt.fit_resample(X, y)
+
+print('원본 shape %s' % Counter(y))
+print('SMOTE + Tomek Links shape %s' % Counter(y_res))
