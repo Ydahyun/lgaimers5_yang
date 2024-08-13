@@ -1,0 +1,61 @@
+import numpy as np
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+
+def calculate_fuzzy_membership(X, y):
+    X = np.array(X)
+    y = np.array(y)
+    
+    unique_classes = np.unique(y)
+    memberships = np.zeros(len(y))
+
+    for cls in unique_classes:
+        class_indices = np.where(y == cls)[0]
+        class_data = X[class_indices]
+        
+        centroid = np.mean(class_data, axis=0)
+        distances = np.linalg.norm(class_data - centroid, axis=1)
+        
+        # 거리를 확률로 변환
+        distances_prob = distances / (np.sum(distances) + 1e-9)
+        entropy = -distances_prob * np.log(distances_prob + 1e-9)
+        entropy = np.sum(entropy)
+
+        memberships[class_indices] = 1 / (1 + entropy)
+    
+    return memberships
+
+class EFSVM:
+    def __init__(self, C=1.0, kernel='rbf', gamma='scale'):
+        self.C = C
+        self.kernel = kernel
+        self.gamma = gamma
+        self.svm = None
+    
+    def fit(self, X, y, membership):
+        sample_weight = membership
+        
+        # 파이프라인 설정
+        self.svm = Pipeline([
+            ('scaler', StandardScaler()),
+            ('svc', SVC(C=self.C, kernel=self.kernel, gamma=self.gamma))
+        ])
+        
+        # 학습
+        self.svm.fit(X, y, svc__sample_weight=sample_weight)
+
+    def predict(self, X):
+        return self.svm.predict(X)
+
+# 데이터 로드 및 전처리
+
+X_res = np.array(X_res)
+y_res = np.array(y_res)
+
+# 퍼지 멤버십 계산
+membership = calculate_fuzzy_membership(X_res, y_res)
+
+# EFSVM 모델 학습
+efsvm = EFSVM(C=1.0, kernel='rbf', gamma='scale')
+efsvm.fit(X_res, y_res, membership)
