@@ -1,0 +1,91 @@
+import numpy as np
+from sklearn.svm import SVC
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.neighbors import NearestNeighbors
+
+def calculate_fuzzy_membership(X, y, k=5):
+    X = np.array(X)
+    y = np.array(y)
+    N = len(y)
+    memberships = np.zeros(N)
+    
+    # k-NN 모델 생성
+    nbrs = NearestNeighbors(n_neighbors=k+1).fit(X)
+    distances, indices = nbrs.kneighbors(X)
+    
+    for i in range(N):
+        # 자기 자신 제외
+        neighbor_indices = indices[i][1:]
+        neighbor_labels = y[neighbor_indices]
+        
+        p_positive = np.sum(neighbor_labels == 1) / k
+        p_negative = np.sum(neighbor_labels == -1) / k
+        
+        # 엔트로피 계산
+        entropy = - (p_positive * np.log(p_positive + 1e-9) + p_negative * np.log(p_negative + 1e-9))
+        
+        memberships[i] = entropy
+    
+    return memberships
+
+def assign_fuzzy_membership(memberships, y, m=5, beta=0.1):
+    memberships = memberships.copy()
+    
+    # 양성 클래스는 멤버십 값을 1로 설정
+    positive_indices = np.where(y == 1)[0]
+    memberships[positive_indices] = 1.0
+    
+    # 음성 클래스 처리
+    negative_indices = np.where(y == -1)[0]
+    negative_entropies = memberships[negative_indices]
+    
+    # 엔트로피 값에 따라 정렬
+    sorted_indices = negative_indices[np.argsort(negative_entropies)]
+    group_size = len(sorted_indices) // m
+    
+    for i in range(m):
+        if i == m - 1:
+            group_indices = sorted_indices[i*group_size:]
+        else:
+            group_indices = sorted_indices[i*group_size:(i+1)*group_size]
+        # 퍼지 멤버십 값 할당
+        fm_value = 1.0 - beta * i
+        memberships[group_indices] = fm_value
+    
+    return memberships
+
+class EFSVM:
+    def __init__(self, C=1.0, kernel='rbf', gamma='scale'):
+        self.C = C
+        self.kernel = kernel
+        self.gamma = gamma
+        self.svm = None
+    
+    def fit(self, X, y, membership):
+        sample_weight = membership
+        
+        # 파이프라인 설정
+        self.svm = Pipeline([
+            ('scaler', StandardScaler()),
+            ('svc', SVC(C=self.C, kernel=self.kernel, gamma=self.gamma))
+        ])
+        
+        # 학습
+        self.svm.fit(X, y, svc__sample_weight=sample_weight)
+
+    def predict(self, X):
+        return self.svm.predict(X)
+
+# 데이터 로드 및 전처리
+X_res = np.array(X_res)
+y_res = np.array(y_res)
+
+# 퍼지 멤버십 계산
+initial_memberships = calculate_fuzzy_membership(X_res, y_res, k=5)
+# 멤버십 값 조정
+memberships = assign_fuzzy_membership(initial_memberships, y_res, m=5, beta=0.1)
+
+# EFSVM 모델 학습
+efsvm = EFSVM(C=1.0, kernel='rbf', gamma='scale')
+efsvm.fit(X_res, y_res, memberships)
